@@ -1,0 +1,16 @@
+# One ill-formed model per constraint added or changed in Delivery 4, and the message the language gives.
+# Checked by: python test_invalid.py   (file | constraint | text that the rejection must contain)
+c3-confinement.arch    | C3 reinforced [E]: boundary confinement in T2        | SoS_K99: CUS (T3) -> NCG (T2) crosses constituents outside T2
+c6-workload.arch       | C6 (core v2.0): workloads follow connectors          | Recovery: Custody goes from TMU to BRO without a connector
+c7-fault.arch          | C7 (core v2.0): faults on components with capacity   | Recovery: fault on FGW, which has no capacity
+e1-direct-event.arch   | E1 [E]: event-driven style, corrected scope          | E_K19: event delivered to service CUS (T3) by TMU (T1), which is not a broker
+e1-publish.arch        | E1 [E]: event-driven style (C6 of Delivery 3)        | E_K99: CUS (T3) publishes an event directly to PAN (T1), which is neither a broker nor a data store
+e2-client-server.arch  | E2 [E]: client-server style (C7 of Delivery 3)       | E_K98: client PAN (T1) requests from TRA (T2), which is not a T3 service
+e3-via.arch            | E3 [E]: a workload names the connector of each hop   | Recovery: Custody goes from CUS to BRO via E_K26, which does not join them
+e4-tactic.arch         | E4 [E]: a tactic introduces or changes an element    | Priority: tactic for EQS1 introduces or changes no element
+e5-measure.arch        | E5 [E]: a measure of a scenario observes its artifact | Recovery: p95_latency Custody is declared of EQS1, but Custody does not traverse its artifact
+e6-standby.arch        | E6 [E]: a standby needs a detectable primary         | TRS: standby of TRA needs a capacity, and TRA needs capacity, period and misses
+q-artifact.arch        | Scenario as element: the artifact exists             | Unknown object "E_K99" of class "Element"
+q-tactic-scenario.arch | Tactic as element: its scenario exists               | Unknown object "EQS9" of class "Quality"
+q-tactic-element.arch  | Tactic as element: what it introduces exists         | Unknown object "COL" of class "Element"
+correspondence.arch    | Correspondence with sos.arch (correspondence.py)     | SoS_K19a: agreement is 'Contrato de estado consolidado (sin tasa)', but sos.arch says 'Contrato de estado consolidado; regla de acceso y tasa P7'

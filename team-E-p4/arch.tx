@@ -1,0 +1,160 @@
+// Metamodel (M2) of the architecture description language for the SoS.
+//
+// core v2.0 = Laboratory 4 (core v1.0) + Laboratory 5 (capacity, store, scenarios, C6, C7).
+//             Shared by the six teams and changed only by agreement.
+// [E]       = extension of team E (FTS). Every [E] construct is optional, so a model written
+//             in the core (models/sos.arch) stays valid without changes.
+Model:
+  'system' name=ID
+  constituents+=Constituent
+  elements+=Element
+  analyses*=Analysis
+  qualities*=Quality                                   // [E] quality scenarios as elements
+  tactics*=Tactic                                      // [E] tactics and patterns as elements
+  scenarios*=Scenario
+;
+
+Constituent:
+  'constituent' name=ID label=STRING 'owner' owner=STRING
+;
+
+Element:
+  Component | Connector
+;
+
+Component:
+  'component' name=ID label=STRING
+  'in' system=[Constituent]
+  'tier' tier=Tier
+  'kind' kind=Kind
+  ('availability' availability=NUMBER)?
+  ('latency' latency=NUMBER)?
+  ('capacity' capacity=NUMBER)?                        // core v2.0: service rate (jobs/s)
+  (store?='store'                                      // core v2.0: holds jobs while the next hop is down
+    ('buffer' buffer=INT)?)?                           // [E] finite store: jobs beyond it are lost (E-QS2)
+  ('role' role=Role)?                                  // [E] architectural role (E1)
+  ('discipline' discipline=Discipline)?                // [E] queue discipline of the server (E-QS1)
+  ('period' period=NUMBER                              // [E] liveness signal or probe every `period` ms
+    ('misses' misses=INT)?)?                           // [E] signals missed before it is declared silent
+  ('standby' standby=[Component]                       // [E] passive replica of another component (E-QS3)
+    'switch' switch=NUMBER)?                           // [E] switchover time in ms
+;
+
+Connector:
+  'connector' name=ID
+  'nature' natures+=Nature[',']
+  'coupling' coupling=Coupling
+  'carries' info=STRING
+  ('agreement' agreement=STRING)?
+  ('availability' availability=NUMBER)?
+  ('latency' latency=NUMBER)?
+  ':' links+=Link[',']
+;
+
+Link:
+  path+=[Component]['->']
+;
+
+Analysis:
+  'analysis' name=ID 'scenario' scenario=STRING
+  metric=Metric 'target' target=NUMBER ':'
+  factors+=Factor[',']
+;
+
+Factor:
+  Group | Single
+;
+
+Single:
+  ref=[Element]
+;
+
+Group:
+  '[' alternatives+=[Element]['|'] ']' 'beta' beta=NUMBER
+;
+
+// [E] Quality scenario with its six parts; the artifact refers to elements of the model.
+Quality:
+  'quality' name=ID label=STRING
+  'attribute' attribute=STRING
+  'source' source=STRING
+  'stimulus' stimulus=STRING
+  'artifact' artifact+=[Element][',']
+  'environment' environment=STRING
+  'response' response=STRING
+  'measure' measure=STRING
+;
+
+// [E] Tactic or pattern, linked to the scenario that motivates it and to the elements it
+// introduces or changes.
+Tactic:
+  'tactic' name=ID label=STRING 'for' scenario=[Quality]
+  ('introduces' introduces+=[Element][','])?
+  ('changes' changes+=[Element][','])?
+;
+
+// core v2.0 (Laboratory 5), with the [E] additions marked.
+Scenario:
+  'scenario' name=ID label=STRING
+  workloads+=Workload
+  delays*=Delay                                        // [E]
+  faults*=Fault
+  varies*=Vary                                         // core: one; [E] several, one at a time
+  measures+=Measure
+  'run' duration=NUMBER 'warmup' warmup=NUMBER 'replications' replications=INT
+;
+
+Workload:
+  'workload' name=ID
+  ( 'rate' rate=NUMBER                                 // core: Poisson arrivals
+      ('count' count=INT 'at' start=NUMBER             // [E] batch of `count` jobs paced at `rate`
+        ('retry' retry=NUMBER)?)?                      // [E] probability that a job needs its one retry
+  | 'on' trigger=[Component] )                         // [E] one job when the component is declared silent
+  ('priority' priority=INT)?                           // [E] class of the job (1 = most urgent)
+  ':' path+=[Component]['->']
+  ('via' via+=[Connector][','])?                       // [E] the connector of each hop (E3)
+;
+
+// [E] Time that a component of another owner takes per visit in this scenario (environment).
+Delay:
+  'delay' name=ID 'at' target=[Component] 'for' time=NUMBER
+;
+
+Fault:
+  'fault' target=[Element] 'down' 'at' start=NUMBER 'for' length=NUMBER   // [E] also a connector
+;
+
+Vary:
+  'vary' target=[Varied] ('.' attr=ID)? ':' values+=NUMBER[',']           // [E] '.attr'
+;
+
+Varied:
+  Workload | Component | Delay                                            // [E] Delay
+;
+
+Measure:
+  'measure' metric=MeasureMetric (workload=[Workload])? '<=' threshold=NUMBER unit=Unit
+  ('of' quality=[Quality])?                            // [E] quality scenario whose measure it is
+  ('as' label=STRING)?                                 // [E] name of the property in the reports
+;
+
+MeasureMetric:
+  'p99_latency' | 'lost' | 'recovery'                  // core v2.0
+  | 'p95_latency' | 'p999_latency'                     // [E] other percentiles (E-QS1, E-QS3)
+  | 'drain'                                            // [E] time to forward what the stores held (E-QS2)
+  | 'completion'                                       // [E] time to finish a batch (SoS-QS1, M4)
+  | 'detection'                                        // [E] last valid signal -> silence visible (E-QS6)
+  | 'restore'                                          // [E] fault -> service restored (E-QS3)
+;
+Unit: 'ms' | 's' | 'events';
+Tier: 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
+Kind: 'hardware_software' | 'hardware' | 'software' | 'physical';
+Nature: 'data_flow' | 'control_command' | 'dependency' | 'event_notification';
+Coupling: 'blocking' | 'supply' | 'sink';
+Metric: 'availability' | 'latency';
+Role: 'broker';                                        // [E]
+Discipline: 'fifo' | 'priority';                       // [E]
+
+Comment:
+  /\/\/.*$/
+;

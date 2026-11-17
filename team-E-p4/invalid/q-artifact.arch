@@ -1,0 +1,36 @@
+// Ill-formed: scenario as element. The artifact of the quality scenario refers to E_K99, which is not
+// an element of the model.
+system FTS
+constituent FTS "Sistema de Transporte Fluvial" owner "Operadores de navegación fluvial"
+constituent NCS "Sistema de Coordinación Nacional" owner "Autoridad nacional (transporte, aduanas y control)"
+component TMU "Terminal de Operación de Muelle" in FTS tier T1 kind software
+component FGW "Fluvial Gateway" in FTS tier T2 kind software
+component TRA "Traductor de Modelo Canónico" in FTS tier T2 kind software capacity 100
+component BRO "Broker Interno de Eventos" in FTS tier T2 kind software role broker
+component CUS "Servicio de Custodia" in FTS tier T3 kind software
+component NCG "National Coordination Gateway" in NCS tier T2 kind software
+connector E_K19 nature data_flow coupling sink
+  carries "Traspaso de carga registrado"
+  : TMU -> CUS
+connector E_K21 nature event_notification coupling sink
+  carries "Traspaso de custodia confirmado"
+  : CUS -> BRO
+connector E_K26 nature event_notification coupling sink
+  carries "Eventos de custodia y de navegación"
+  : BRO -> TRA
+connector E_K27 nature event_notification coupling sink
+  carries "Traspaso de custodia en formato canónico"
+  : TRA -> FGW
+connector SoS_K15 nature event_notification coupling sink
+  carries "Custodia recibida por el operador fluvial"
+  agreement "Semántica de custodia; clave transferId (P8)"
+  : FGW -> NCG
+quality EQS1 "Custodia oportuna durante la reconciliación"
+  attribute "Rendimiento" source "Terminal de Operación de Muelle" stimulus "Traspasos a 10 eventos/s"
+  artifact E_K19, E_K99, CUS
+  environment "Pico H1" response "Entregar el evento canónico al Fluvial Gateway" measure "p95 <= 30 s"
+scenario Recovery "E-QS1"
+  workload Custody rate 10 : TMU -> CUS -> BRO -> TRA -> FGW
+    via E_K19, E_K21, E_K26, E_K27
+  measure p95_latency Custody <= 30 s
+  run 150 warmup 60 replications 10
